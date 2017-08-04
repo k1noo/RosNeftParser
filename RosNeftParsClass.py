@@ -73,7 +73,7 @@ class RosNeftParse(QWidget):
         self.tillLbl.move(150, 160)
 
         self.keyLbl = QLabel(self)
-        self.keyLbl.setText('Key Words')
+        self.keyLbl.setText('Key Word')
         self.keyLbl.move(310, 50)
 
         self.fromDateLine = QLineEdit(self)
