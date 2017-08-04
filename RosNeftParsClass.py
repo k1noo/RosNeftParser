@@ -5,7 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, ElementNotVisibleException, TimeoutException
 from openpyxl import Workbook
 from datetime import datetime
-import sys, json, threading, time, contextlib
+import sys, json, threading, time
 from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QLineEdit, QLabel, QTextEdit
 from PyQt5.QtCore import QCoreApplication
 from os import path
