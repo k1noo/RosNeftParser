@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as exp_conds
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException, ElementNotVisibleException
+from selenium.common.exceptions import NoSuchElementException, ElementNotVisibleException, TimeoutException
 from openpyxl import Workbook
 from datetime import datetime
 import sys, json, threading, time
@@ -90,8 +90,14 @@ class RosNeftParse(QWidget):
     def parseLink(self, link):
         self.subDriver.get(link)
         result = {}
-        title = WebDriverWait(self.subDriver, 10).until(exp_conds.presence_of_element_located(
-            (By.CLASS_NAME, 'title')))
+        while True:
+            try:
+                title = WebDriverWait(self.subDriver, 10).until(exp_conds.presence_of_element_located(
+                    (By.CLASS_NAME, 'title')))
+                break
+            except TimeoutException:
+                print('Waiting for page loaded...')
+
         result['Номер закупки'] = self.subDriver.find_element_by_xpath(
             '//*[@id="main"]/table/tbody/tr[2]/td/div/strong[1]').text
         result['Дата публикации'] = self.subDriver.find_element_by_xpath(
@@ -152,7 +158,7 @@ class RosNeftParse(QWidget):
         self.driver.get(self.url)
         self.subDriver = webdriver.Chrome(self.chromeDriverPath)
         self.parsedData = {}
-        self.currDate = datetime.now().strftime("_%d-%B-%Y_%I:%M_")
+        self.currDate = datetime.now().strftime("_%d-%B-%Y_%I-%M%p_")
         self.fields = ['Ссылка на закупку', 'Номер закупки', "Дата публикации", 'Срок подачи заявок',
                        'Наименование закупки', 'Статус закупки', 'Способ закупки', 'Организатор', 'Адрес',
                   "Сведения о начальной (максимальной) цене договора (цене лота)", 'Общий классификатор закупки',
@@ -202,8 +208,14 @@ class RosNeftParse(QWidget):
             _ = sheet1.cell(column=col, row=1, value=self.fields[col - 2])
 
         while nextPageUrl is not None:
-            WebDriverWait(self.driver, 10).until(exp_conds.presence_of_element_located(
-                (By.XPATH, '//*[@id="main"]/table/tbody/tr[2]/td/div/div[3]/table[2]/thead/tr/th[1]/a')))
+            while True:
+                try:
+                    WebDriverWait(self.driver, 10).until(exp_conds.presence_of_element_located(
+                        (By.XPATH, '//*[@id="main"]/table/tbody/tr[2]/td/div/div[3]/table[2]/thead/tr/th[1]/a')))
+                    break
+                except TimeoutException:
+                    print('Waiting for page loaded...')
+
             nextPageUrl = self.driver.find_element_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[4]/ul/li['
                                                        + str(
                 len(self.driver.find_elements_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[4]/ul/li')) - 1)
@@ -242,6 +254,8 @@ class RosNeftParse(QWidget):
                 self.driver.get(nextPageUrl)
         self.subDriver.close()
         self.driver.close()
+        with open(jsonFile, 'a') as file:
+            file.write(']')
         return
 
 if __name__ == '__main__':
