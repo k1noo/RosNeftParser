@@ -5,8 +5,8 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, ElementNotVisibleException, TimeoutException
 from openpyxl import Workbook
 from datetime import datetime
-import sys, json, threading, time
-from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QLineEdit, QLabel
+import sys, json, threading, time, contextlib
+from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QLineEdit, QLabel, QTextEdit
 from PyQt5.QtCore import QCoreApplication
 from os import path
 
@@ -27,6 +27,8 @@ class RosNeftParse(QWidget):
         self.startBtn.setVisible(False)
         self.stopBtn.setVisible(True)
         self.quitBtn.setVisible(False)
+        self.statusLbl.setText('Status: In Process')
+        self.statusLbl.adjustSize()
 
     def onStop(self):
         self.stopBtn.setVisible(False)
@@ -34,8 +36,17 @@ class RosNeftParse(QWidget):
         time.sleep(5)
         self.startBtn.setVisible(True)
         self.quitBtn.setVisible(True)
+        self.statusLbl.setText('Status: Finished and Ready again!')
+        self.statusLbl.adjustSize()
 
     def initUI(self):
+
+        self.textField = QTextEdit(self)
+        self.textField.move(270, 100)
+
+        self.statusLbl = QLabel(self)
+        self.statusLbl.setText('Status: Ready')
+        self.statusLbl.move(270, 300)
 
         self.quitBtn = QPushButton('Quit', self)
         self.quitBtn.clicked.connect(QCoreApplication.instance().quit)
@@ -107,7 +118,6 @@ class RosNeftParse(QWidget):
             tempdata = self.subDriver.find_element_by_xpath(
                         '//*[@id="main"]/table/tbody/tr[2]/td/div/strong[3]').text + ' по '+ self.subDriver.find_element_by_xpath(
                 '//*[@id="main"]/table/tbody/tr[2]/td/div/strong[4]').text
-            print(tempdata)
             if 'Способ' not in tempdata:
                 result['Срок подачи заявок'] = tempdata
             else:
@@ -247,8 +257,9 @@ class RosNeftParse(QWidget):
                     _ = sheet1.cell(column=col, row=self.ROWID, value=str(result.get(self.fields[col - 2])))
                 self.ROWID += 1
                 wb.save(exlFile)
-                print(json.dumps(result, indent=4, ensure_ascii=False))
+                self.textField.append(json.dumps(result, indent=4, ensure_ascii=False))
             if nextPageUrl is None:
+                self.onStop()
                 break
             else:
                 self.driver.get(nextPageUrl)
