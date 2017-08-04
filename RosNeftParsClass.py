@@ -98,12 +98,14 @@ class RosNeftParse(QWidget):
     def onChangedKey(self, text):
         self.searchKey = text
 
-    def parseLink(self, link):
+    def parseLink(self, link, deadline):
         self.subDriver.get(link)
         result = {}
         while True:
+            if self.stopFlag is True:
+                return None
             try:
-                title = WebDriverWait(self.subDriver, 10).until(exp_conds.presence_of_element_located(
+                title = WebDriverWait(self.subDriver, 2).until(exp_conds.presence_of_element_located(
                     (By.CLASS_NAME, 'title')))
                 break
             except TimeoutException:
@@ -137,6 +139,7 @@ class RosNeftParse(QWidget):
                             '//*[@id="main"]/table/tbody/tr[2]/td/div/strong[6]').text.split(' - ')[1]
             except NoSuchElementException:
                 pass
+        result['Срок подачи заявок'] = deadline
         result['Наименование закупки'] = title.text
         result['Ссылка на закупку'] = link
         tables = self.subDriver.find_elements_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/table')
@@ -159,6 +162,18 @@ class RosNeftParse(QWidget):
                                                         + str(tableID) + ']/tbody/tr['
                                                         + str(rowID) + ']/td[2]/div/a')
                     value = elem.get_attribute('href')
+                elif 'цене' in key:
+                    currency = {'руб': 'Рубли'}
+                    abr = 'руб'
+                    splitter = ','
+                    if 'дол' in value:
+                        currency = {'дол': 'Доллары США'}
+                        abr = 'дол'
+                    value = ''.join(value.partition(abr)[0].strip().split(' '))
+                    if ',' not in value:
+                        splitter = '.'
+                    value = ','.join(value.split(splitter))
+                    result['Валюта'] = currency[abr]
                 result[key] = value
         return result
 
@@ -171,7 +186,7 @@ class RosNeftParse(QWidget):
         self.currDate = datetime.now().strftime("_%d-%B-%Y_%I-%M%p_")
         self.fields = ['Ссылка на закупку', 'Номер закупки', "Дата публикации", 'Срок подачи заявок',
                        'Наименование закупки', 'Статус закупки', 'Способ закупки', 'Организатор', 'Адрес',
-                  "Сведения о начальной (максимальной) цене договора (цене лота)", 'Общий классификатор закупки',
+                  "Сведения о начальной (максимальной) цене договора (цене лота)", 'Валюта', 'Общий классификатор закупки',
                        "Требования к участникам"]
         self.ROWID = 2
 
@@ -235,18 +250,21 @@ class RosNeftParse(QWidget):
             else:
                 nextPageUrl = nextPageUrl.get_attribute('href')
             links = []
+            deadlines = {}
             for i in range(1, len(self.driver.find_elements_by_xpath(
                     '//*[@id="main"]/table/tbody/tr[2]/td/div/div[3]/table[2]/tbody/tr')) + 1):
-                links.append(
-                    self.driver.find_element_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[3]/table[2]/tbody/tr['
-                                                 + str(i) + ']/td[1]/a').get_attribute('href'))
+                link = self.driver.find_element_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[3]/table[2]/tbody/tr['
+                                                 + str(i) + ']/td[1]/a').get_attribute('href')
+                links.append(link)
+                deadlines[link] = self.driver.find_element_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[3]/table[2]/tbody/tr['
+                                                 + str(i) + ']/td[6]').text
             links = set(links)
             for page in links:
                 if self.stopFlag is True:
                     self.subDriver.close()
                     self.driver.close()
                     return
-                result = self.parseLink(page)
+                result = self.parseLink(page, deadlines[page])
                 if result is None:
                     continue
                 with open(jsonFile, 'a') as jsonfile:
@@ -257,7 +275,7 @@ class RosNeftParse(QWidget):
                     _ = sheet1.cell(column=col, row=self.ROWID, value=str(result.get(self.fields[col - 2])))
                 self.ROWID += 1
                 wb.save(exlFile)
-                self.textField.append(json.dumps(result, indent=4, ensure_ascii=False))
+                self.textField.append('Processed: '+str(self.ROWID-2)+'. Last Num: '+result['Номер закупки'])
             if nextPageUrl is None:
                 self.onStop()
                 break
