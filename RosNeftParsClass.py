@@ -243,7 +243,7 @@ class RosNeftParse(QWidget):
 
             nextPageUrl = self.driver.find_element_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[4]/ul/li['
                                                        + str(
-                len(self.driver.find_elements_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[4]/ul/li')) - 1)
+                len(self.driver.find_elements_by_xpath('//*[@id="main"]/table/tbody/tr[2]/td/div/div[4]/ul/li')))
                                                        + ']/a')
             if nextPageUrl is None or 'следующая' not in nextPageUrl.text:
                 nextPageUrl = None
